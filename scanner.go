@@ -13,9 +13,9 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-type Scanner struct {
-	ip   string
-	lock *semaphore.Weighted
+type Pscn struct {
+	ip         string
+	routinelim *semaphore.Weighted
 }
 
 func Abvalue() int64 {
@@ -23,14 +23,14 @@ func Abvalue() int64 {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	s := strings.TrimSpace(string(out))
-	
+
 	i, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		panic(err)
 	}
-	
+
 	return i
 }
 
@@ -52,15 +52,15 @@ func PortScan(ip string, port int, timeout time.Duration) {
 	fmt.Println(port, "open")
 }
 
-func (ps *Scanner) Start(f, l int, timeout time.Duration) {
+func (ps *Pscn) Start(f, l int, timeout time.Duration) {
 	wg := sync.WaitGroup{}
 	defer wg.Wait()
 
 	for port := f; port <= l; port++ {
-		ps.lock.Acquire(context.TODO(), 1)
+		ps.routinelim.Acquire(context.TODO(), 1)
 		wg.Add(1)
 		go func(port int) {
-			defer ps.lock.Release(1)
+			defer ps.routinelim.Release(1)
 			defer wg.Done()
 			PortScan(ps.ip, port, timeout)
 		}(port)
@@ -68,9 +68,9 @@ func (ps *Scanner) Start(f, l int, timeout time.Duration) {
 }
 
 func main() {
-	ps := &Scanner{
-		ip:   "127.0.0.1",
-		lock: semaphore.NewWeighted(abvalue()),
+	ps := &Pscn{
+		ip:         "127.0.0.1",
+		routinelim: semaphore.NewWeighted(abvalue()),
 	}
 	ps.Start(1, 65535, 500*time.Millisecond)
 }
